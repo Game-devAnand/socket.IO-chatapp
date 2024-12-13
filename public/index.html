@@ -1,34 +1,92 @@
+<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Socket.IO Chat</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      #messages {
+        border: 1px solid #ccc;
+        height: 200px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0;
+      }
+      button {
+        padding: 10px;
+      }
+    </style>
   </head>
   <body>
-    <h1>Chatting</h1>
-    <input type="text" id="message" placeholder="text" />
-    <button id="sendBtn">Send</button>
-    <div id="client-msg"></div>
+    <h1>Real-Time Chat</h1>
+    <div>
+      <label for="username">Username:</label>
+      <input type="text" id="username" placeholder="Enter your username" />
+      <button onclick="login()">Log In</button>
+    </div>
+
+    <div id="chat" style="display: none">
+      <h2>Chat with:</h2>
+      <label for="receiver">Receiver:</label>
+      <input type="text" id="receiver" placeholder="Enter receiver username" />
+      <br />
+      <div id="messages"></div>
+      <input type="text" id="message" placeholder="Type a message" />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
+      let username = "";
 
-      const sendBtn = document.getElementById("sendBtn");
-      const message = document.getElementById("message");
-      const clientMsg = document.getElementById("client-msg");
+      function login() {
+        username = document.getElementById("username").value;
+        if (username) {
+          socket.emit("login", username); // Send login event with username to the server
+          document.getElementById("chat").style.display = "block";
+          document.querySelector("div").style.display = "none";
+        } else {
+          alert("Please enter a username");
+        }
+      }
 
-      socket.on("s-msg", (msgs) => {
-        console.log("client " + msgs);
-        const text = document.createElement("li");
-        text.innerText = msgs;
-        clientMsg.appendChild(text);
+      // Listen for incoming messages
+      socket.on("receiveMessage", (data) => {
+        const messagesDiv = document.getElementById("messages");
+        const messageElement = document.createElement("div");
+        messageElement.textContent = `${data.sender}: ${data.message}`;
+        messagesDiv.appendChild(messageElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the latest message
       });
 
-      sendBtn.addEventListener("click", (e) => {
-        const msg = message.value;
-        socket.emit("user-message", msg);
+      // Handle error (if receiver is not online)
+      socket.on("error", (message) => {
+        alert(message);
       });
+
+      function sendMessage() {
+        const receiver = document.getElementById("receiver").value;
+        const message = document.getElementById("message").value;
+        if (receiver && message) {
+          socket.emit("sendMessage", {
+            sender: username,
+            receiver: receiver,
+            message: message,
+          });
+          document.getElementById("message").value = ""; // Clear the message input
+        } else {
+          alert("Please enter a receiver and message");
+        }
+      }
     </script>
   </body>
 </html>
